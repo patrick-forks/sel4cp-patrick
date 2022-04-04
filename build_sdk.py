@@ -72,7 +72,20 @@ SUPPORTED_BOARDS = (
         examples = {
             "hello": Path("example/zcu102/hello")
         }
-    )
+    ),
+    BoardInfo(
+        name="imx8mq",
+        gcc_cpu="cortex-a53",
+        loader_link_address=0x41000000,
+        kernel_options = {
+            "KernelPlatform": "imx8mq-evk",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+        },
+        examples = {
+            "hello": Path("example/imx8mq/hello")
+        }
+    ),
 )
 
 SUPPORTED_CONFIGS = (
