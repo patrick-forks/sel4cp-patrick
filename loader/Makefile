@@ -19,8 +19,13 @@ ifeq ($(strip $(LINK_ADDRESS)),)
 $(error LINK_ADDRESS must be specified)
 endif
 
-
-TOOLCHAIN := aarch64-none-elf-
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	TOOLCHAIN := aarch64-none-elf-
+endif
+ifeq ($(UNAME_S),Darwin)
+	TOOLCHAIN := aarch64-unknown-linux-gnu-
+endif
 CFLAGS := -std=gnu11 -g3 -O3 -nostdlib -ffreestanding -mcpu=$(GCC_CPU) -DBOARD_$(BOARD) -Wall -Werror
 
 PROGS := loader.elf
