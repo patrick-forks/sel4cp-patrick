@@ -19,7 +19,13 @@ ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
 
-TOOLCHAIN := aarch64-none-elf
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	TOOLCHAIN := aarch64-none-elf
+endif
+ifeq ($(UNAME_S),Darwin)
+	TOOLCHAIN := aarch64-unknown-linux-gnu
+endif
 
 CPU := cortex-a53
 
