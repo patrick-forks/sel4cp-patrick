@@ -357,6 +357,15 @@ copy_data(void)
         puts("LDR|INFO: copying region ");
         puthex32(i);
         puts("\n");
+        if (i == 4) {
+            puts("LDR|DEBUG: copying region 4, r->loader_addr: ");
+            puthex64(r->load_addr);
+            puts("base + r->offset: ");
+            puthex64((uintptr_t)(base + r->offset));
+            puts("r->size");
+            puthex64(r->size);
+            puts("\n");
+        }
         memcpy((void *)(uintptr_t)r->load_addr, base + r->offset, r->size);
     }
 }
@@ -489,6 +498,8 @@ main(void)
      * fail label; it's not possible to return to U-boot
      */
     copy_data();
+
+    puts("LDR|DEBUG: we've finished copying data\n");
 
 #if defined(GIC_V2)
     configure_gicv2();

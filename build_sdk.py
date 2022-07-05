@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from sys import executable
 from tarfile import open as tar_open, TarInfo
 
+from enum import IntEnum
 from typing import Dict, Union, List, Tuple
 
 NAME = "sel4cp"
@@ -30,10 +31,16 @@ KERNEL_CONFIG_TYPE = Union[bool, str]
 KERNEL_OPTIONS = Dict[str, KERNEL_CONFIG_TYPE]
 
 @dataclass
+class BoardImageType(IntEnum):
+    RAW_IMAGE = 1,
+    UIMAGE = 2,
+
+@dataclass
 class BoardInfo:
     name: str
     gcc_cpu: str
     loader_link_address: int
+    image_type: BoardImageType
     kernel_options: KERNEL_CONFIG_TYPE
     examples: Dict[str, Path]
 
@@ -50,6 +57,7 @@ SUPPORTED_BOARDS = (
         name="tqma8xqp1gb",
         gcc_cpu="cortex-a35",
         loader_link_address=0x80280000,
+        image_type=BoardImageType.RAW_IMAGE,
         kernel_options = {
             "KernelPlatform": "tqma8xqp1gb",
             "KernelIsMCS": True,
@@ -63,6 +71,7 @@ SUPPORTED_BOARDS = (
         name="zcu102",
         gcc_cpu="cortex-a53",
         loader_link_address=0x40000000,
+        image_type=BoardImageType.RAW_IMAGE,
         kernel_options = {
             "KernelPlatform": "zynqmp",
             "KernelARMPlatform": "zcu102",
@@ -76,7 +85,8 @@ SUPPORTED_BOARDS = (
     BoardInfo(
         name="tx2",
         gcc_cpu="cortex-a57",
-        loader_link_address=0x80080000,
+        loader_link_address=0x90a8d000,
+        image_type=BoardImageType.UIMAGE,
         kernel_options = {
             "KernelPlatform": "tx2",
             "KernelIsMCS": True,

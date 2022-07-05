@@ -44,6 +44,7 @@ from struct import pack, Struct
 from os import environ
 from math import log2, ceil
 from sys import argv, executable, stderr
+from subprocess import run as subprocess_run
 
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -1747,7 +1748,11 @@ def main() -> int:
         built_system.reserved_region,
         regions,
     )
+
     loader.write_image(args.output)
+    if args.board == "tx2":
+        addr = "90a8d000"
+        subprocess_run(["mkimage", "-A", "arm64", "-O", "linux", "-T", "kernel", "-C", "none", "-a", addr, "-e", addr, "-d", str(args.output), str(args.output) + "uimage"])
 
     return 0
 
