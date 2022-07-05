@@ -72,7 +72,20 @@ SUPPORTED_BOARDS = (
         examples = {
             "hello": Path("example/zcu102/hello")
         }
-    )
+    ),
+    BoardInfo(
+        name="tx2",
+        gcc_cpu="cortex-a57",
+        loader_link_address=0x80080000,
+        kernel_options = {
+            "KernelPlatform": "tx2",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+        },
+        examples = {
+            "hello": Path("example/tx2/hello")
+        }
+    ),
 )
 
 SUPPORTED_CONFIGS = (
