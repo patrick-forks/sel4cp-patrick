@@ -69,8 +69,6 @@
 #define MAX_NAME_LEN 16
 #define MAX_TCBS 64
 
-#define MAX_UNTYPED_REGIONS 256
-
 /* Max words available for bootstrap invocations.
  *
  * Only a small number of syscalls is required to
@@ -90,18 +88,6 @@ static char pd_names[MAX_PDS][MAX_NAME_LEN];
 seL4_Word fault_ep;
 seL4_Word reply;
 seL4_Word tcbs[MAX_TCBS];
-
-struct region {
-    uintptr_t paddr;
-    uintptr_t size_bits;
-    uintptr_t is_device; /*FIXME: should back size_bits / is_device */
-};
-
-struct untyped_info {
-    seL4_Word cap_start;
-    seL4_Word cap_end;
-    struct region regions[MAX_UNTYPED_REGIONS];
-};
 
 seL4_Word bootstrap_invocation_count;
 seL4_Word bootstrap_invocation_data[BOOTSTRAP_INVOCATION_DATA_SIZE];
@@ -540,11 +526,12 @@ main(seL4_BootInfo *bi)
     __sel4_ipc_buffer = bi->ipcBuffer;
     puts("MON|INFO: seL4 Core Platform Bootstrap\n");
 
-#if 0
+#if 1
     /* This can be useful to enable during new platform bring up
      * if there are problems
      */
     dump_bootinfo(bi);
+    dump_untyped_info(&untyped_info);
 #endif
 
     check_untypeds_match(bi);

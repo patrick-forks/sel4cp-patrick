@@ -848,6 +848,10 @@ def emulate_kernel_boot(
     schedcontrol_cap = fixed_cap_count + paging_cap_count
 
     device_regions = reserved_region.aligned_power_of_two_regions() + device_memory.aligned_power_of_two_regions()
+    print("=== device_regions ===")
+    print(f"reserved_region: {reserved_region}")
+    print(f"device_memory: {device_memory._regions}")
+    print("======================")
     normal_regions = boot_region.aligned_power_of_two_regions() + normal_memory.aligned_power_of_two_regions()
     untyped_objects = []
     for cap, r in enumerate(device_regions, first_untyped_cap):

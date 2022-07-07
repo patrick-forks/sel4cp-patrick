@@ -349,6 +349,24 @@ print_loader_data(void)
 }
 
 static void
+memcpy_debug(void *dst, const void *src, size_t sz)
+{
+    char *dst_ = dst;
+    puts("here\n");
+    const char *src_ = src;
+    puts("here 2\n");
+    while (sz-- > 0) {
+        puts("sz: ");
+        puthex64(sz);
+        puts("\n");
+        puts("dst: ");
+        puthex64((uintptr_t)dst);
+        puts("\n");
+        *dst_++ = *src_++;
+    }
+}
+
+static void
 copy_data(void)
 {
     const void *base = &loader_data->regions[loader_data->num_regions];
@@ -360,13 +378,15 @@ copy_data(void)
         if (i == 4) {
             puts("LDR|DEBUG: copying region 4, r->loader_addr: ");
             puthex64(r->load_addr);
-            puts("base + r->offset: ");
+            puts(" base + r->offset: ");
             puthex64((uintptr_t)(base + r->offset));
-            puts("r->size");
+            puts(" r->size: ");
             puthex64(r->size);
             puts("\n");
+            memcpy_debug((void *)(uintptr_t)r->load_addr, base + r->offset, r->size);
+        } else {
+            memcpy((void *)(uintptr_t)r->load_addr, base + r->offset, r->size);
         }
-        memcpy((void *)(uintptr_t)r->load_addr, base + r->offset, r->size);
     }
 }
 

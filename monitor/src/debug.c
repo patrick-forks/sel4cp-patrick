@@ -12,6 +12,76 @@
 #include "debug.h"
 
 void
+dump_untyped_info(struct untyped_info *untyped_info) {
+    puts("MON|INFO: dumping untyped_info\n");
+    puts("MON|INFO: untyped cap start: ");
+    puthex32(untyped_info->cap_start);
+    puts("\n");
+    puts("MON|INFO: untyped cap end: ");
+    puthex32(untyped_info->cap_end);
+    puts("\n");
+    puts("MON|INFO: untyped regions: ");
+    puts("\n");
+#if 1
+    for (int i = 0; i < untyped_info->cap_end - untyped_info->cap_start; i++) {
+        puts("untypedList[");
+        puthex32(i);
+        puts("]        = slot: ");
+        puthex32(untyped_info->cap_start + i);
+        puts(", paddr: ");
+        puthex64(untyped_info->regions[i].paddr);
+        puts(" - ");
+        puthex64(untyped_info->regions[i].paddr + (1UL << untyped_info->regions[i].size_bits));
+        puts(" (");
+        puts(untyped_info->regions[i].is_device ? "device" : "normal");
+        puts(") bits: ");
+        puthex32(untyped_info->regions[i].size_bits);
+        puts("\n");
+    }
+#endif
+    /* The extended printing over the individual untypes is good if you care
+       about the individual objects, but annoying if you want to focus on memory
+       regions. This coalesces thing before printing to summarize the regions.
+       This works best when the input is sorted! In practise untyped are sorted
+       by device/normal and then address, so coalescing works well, but not perfectly.
+       Good enough for debug.
+
+       Note: the 'gaps' we see are where the kernel is using the memory. For device
+       memory, this is the memory regions of the GIC. For regular memory that is
+       memory used for kernel and rootserver.
+    */
+#if 1
+    puts("\nUntyped Memory Ranges\n");
+    seL4_Word start = untyped_info->regions[0].paddr;
+    seL4_Word end = start + (1ULL << untyped_info->regions[0].size_bits);
+    seL4_Word is_device = untyped_info->regions[0].is_device;
+    for (int i = 0; i < untyped_info->cap_end - untyped_info->cap_start; i++) {
+        if (untyped_info->regions[i].paddr != end || untyped_info->regions[i].is_device != is_device) {
+            puts("                                     paddr: ");
+            puthex64(start);
+            puts(" - ");
+            puthex64(end);
+            puts(" (");
+            puts(is_device ? "device" : "normal");
+            puts(")\n");
+            start = untyped_info->regions[i].paddr;
+            end = start + (1ULL << untyped_info->regions[i].size_bits);
+            is_device = untyped_info->regions[i].is_device;
+        } else {
+            end += (1ULL << untyped_info->regions[i].size_bits);
+        }
+    }
+    puts("                                     paddr: ");
+    puthex64(start);
+    puts(" - ");
+    puthex64(end);
+    puts(" (");
+    puts(is_device ? "device" : "normal");
+    puts(")\n");
+#endif
+}
+
+void
 dump_bootinfo(seL4_BootInfo *bi)
 {
     unsigned i;

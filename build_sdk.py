@@ -85,7 +85,7 @@ SUPPORTED_BOARDS = (
     BoardInfo(
         name="tx2",
         gcc_cpu="cortex-a57",
-        loader_link_address=0x90a8d000,
+        loader_link_address=0x80a8d000,
         image_type=BoardImageType.UIMAGE,
         kernel_options = {
             "KernelPlatform": "tx2",

@@ -217,6 +217,7 @@ class KernelObjectAllocator:
         self._untyped = []
         for ut in kernel_boot_info.untyped_objects:
             if ut.is_device:
+                print(f"device untyped: {ut}")
                 # Kernel allocator can only allocate out of normal memory
                 # device memory can't be used for kernel objects
                 continue
@@ -1592,10 +1593,14 @@ def main() -> int:
 
     # FIXME: The kernel config should be an output of the kernel
     # build step (or embedded into the kernel elf file in some manner
+    if args.board == "tx2":
+        paddr_user_device_top = (1 << 44)
+    else:
+        paddr_user_device_top = (1 << 40)
     kernel_config = KernelConfig(
         word_size = 64,
         minimum_page_size = kb(4),
-        paddr_user_device_top = (1 << 40),
+        paddr_user_device_top = paddr_user_device_top,
         kernel_frame_size = (1 << 12),
         init_cnode_bits = 12,
         cap_address_bits=64,
@@ -1751,7 +1756,8 @@ def main() -> int:
 
     loader.write_image(args.output)
     if args.board == "tx2":
-        addr = "90a8d000"
+        addr = "80a8d000"
+        # @ivanv this command outputs unecessary stuff
         subprocess_run(["mkimage", "-A", "arm64", "-O", "linux", "-T", "kernel", "-C", "none", "-a", addr, "-e", addr, "-d", str(args.output), str(args.output) + "uimage"])
 
     return 0
