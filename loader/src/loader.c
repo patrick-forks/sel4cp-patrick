@@ -141,6 +141,18 @@ putc(uint8_t ch)
     while ((*UART_REG(UARTFR) & PL011_UARTFR_TXFF) != 0);
     *UART_REG(UARTDR) = ch;
 }
+#elif defined(BOARD_rpi3b)
+#define UART_BASE 0x3f215040
+#define MU_IO 0x00
+#define MU_LSR 0x14
+#define MU_LSR_TXIDLE (1 << 6)
+
+static void
+putc(uint8_t ch)
+{
+    while (!(*UART_REG(MU_LSR) & MU_LSR_TXIDLE));
+    *UART_REG(MU_IO) = (ch & 0xff);
+}
 #else
 #error Board not defined
 #endif
