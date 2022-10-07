@@ -26,11 +26,6 @@ _Static_assert(sizeof(uintptr_t) == 8 || sizeof(uintptr_t) == 4, "Expect uintptr
 
 #define STACK_SIZE 4096
 
-#if defined(BOARD_tqma8xqp1gb)
-#define UART_BASE 0x5a070000
-#elif defined(BOARD_qemu_arm_virt)
-#define UART_BASE 0x9000000
-#endif
 #define UART_REG(x) ((volatile uint32_t *)(UART_BASE + (x)))
 
 #if defined(BOARD_zcu102)
@@ -117,6 +112,7 @@ memcpy(void *dst, const void *src, size_t sz)
 }
 
 #if defined(BOARD_tqma8xqp1gb)
+#define UART_BASE 0x5a070000
 #define STAT 0x14
 #define TRANSMIT 0x1c
 #define STAT_TDRE (1 << 23)
@@ -134,6 +130,7 @@ putc(uint8_t ch)
     *((volatile uint32_t *)(0x00FF000030)) = ch;
 }
 #elif defined(BOARD_qemu_arm_virt)
+#define UART_BASE 0x9000000
 #define UARTDR                    0x000
 #define UARTFR                    0x018
 #define PL011_UARTFR_TXFF         (1 << 5)
