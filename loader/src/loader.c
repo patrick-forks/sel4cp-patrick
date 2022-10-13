@@ -142,9 +142,9 @@ putc(uint8_t ch)
     *UART_REG(UARTDR) = ch;
 }
 #elif defined(BOARD_rpi3b)
-#define UART_BASE 0x3f215040
-#define MU_IO 0x00
-#define MU_LSR 0x14
+#define UART_BASE 0x3f215000
+#define MU_IO 0x40
+#define MU_LSR 0x54
 #define MU_LSR_TXIDLE (1 << 6)
 
 static void
