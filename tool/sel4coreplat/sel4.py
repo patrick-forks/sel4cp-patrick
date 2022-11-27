@@ -16,6 +16,7 @@ from sel4coreplat.sysxml import SysMap
 class KernelArch:
     AARCH64 = 1
     RISCV64 = 2
+    X86_64 = 3
 
 
 @dataclass(frozen=True, eq=True)
@@ -62,6 +63,11 @@ class Sel4Object(IntEnum):
                 return RISCV64_OBJECTS[self]
             else:
                 return self
+        elif kernel_config.arch == KernelArch.X86_64:
+            if self in X86_64_OBJECTS:
+                return X86_64_OBJECTS[self]
+            else:
+                return self
         else:
             raise Exception(f"Unknown kernel architecture {arch}")
 
@@ -93,6 +99,18 @@ RISCV64_OBJECTS = {
     Sel4Object.VSpace: 10,
 }
 
+# @ivanv: Double check these, not sure about the first two and the last one.
+X86_64_OBJECTS = {
+    Sel4Object.PdPt: 7, # ?? seL4_X64_PML4Object
+    Sel4Object.Pml4: 8, # seL4_X64_PML4Object
+    Sel4Object.HugePage: 9,
+    Sel4Object.SmallPage: 10,
+    Sel4Object.LargePage: 11,
+    Sel4Object.PageTable: 12,
+    Sel4Object.PageDirectory: 13,
+    Sel4Object.IOPageTable: 14 # seL4_X86_IOPageTableObject, not sure if necessary
+}
+
 
 SEL4_OBJECT_TYPE_NAMES = {
     Sel4Object.Untyped: "SEL4_UNTYPED_OBJECT",
@@ -113,6 +131,7 @@ SEL4_OBJECT_TYPE_NAMES = {
 
 # Note that these sizes can be architecture specific but for now we only
 # support 64-bit ARM and RISC-V where these happen to be the same.
+# @ivanv: The value of TCB size depends on config on x86 and RISC-V
 FIXED_OBJECT_SIZES = {
     Sel4Object.Tcb: 1 << 11,
     Sel4Object.Endpoint: 1 << 4,
@@ -155,7 +174,8 @@ SEL4_ARM_DEFAULT_VMATTRIBUTES = 3
 SEL4_RISCV_DEFAULT_VMATTRIBUTES = 0
 SEL4_RISCV_EXECUTE_NEVER = 1
 
-SEL4_RISCV_PAGE_BITS = 12
+SEL4_X86_DEFAULT_VMATTRIBUTES = 0
+SEL4_X86_CACHE_DISABLED = 2
 
 # FIXME: There should be a better way of determining these, so they don't
 # have to be hard coded
@@ -210,7 +230,7 @@ def _get_arch_n_paging(arch: KernelArch, region: MemoryRegion) -> int:
         raise Exception(f"Unknown kernel architecture {arch}")
 
 
-# Unlike on ARM, seL4_UserContext is the same on 32-bit and 64-bit RISC-V
+# Unlike on ARM and x86, seL4_UserContext is the same on 32-bit and 64-bit RISC-V
 class Sel4RiscvRegs:
     """
     typedef struct seL4_UserContext_ {
@@ -500,6 +520,92 @@ typedef struct seL4_UserContext_ {
         )
         return tuple(0 if x is None else x for x in raw)
 
+
+class Sel4X86_64Regs:
+    """
+typedef struct seL4_UserContext_ {
+    seL4_Word rip, rsp, rflags, rax, rbx, rcx, rdx, rsi, rdi, rbp,
+              r8, r9, r10, r11, r12, r13, r14, r15;
+    seL4_Word fs_base, gs_base;
+} seL4_UserContext;
+
+    """
+    # FIXME: This is pretty terrible, but for now... explicit better than implicit
+    # NOTE: We could optimize so that we can see how many register are actually set
+    # in a given set to reduce space
+    def __init__(self,
+        rip: Optional[int] = None,
+        rsp: Optional[int] = None,
+        rflags: Optional[int] = None,
+        rax: Optional[int] = None,
+        rbx: Optional[int] = None,
+        rcx: Optional[int] = None,
+        rdx: Optional[int] = None,
+        rsi: Optional[int] = None,
+        rdi: Optional[int] = None,
+        rbp: Optional[int] = None,
+        r8: Optional[int] = None,
+        r9: Optional[int] = None,
+        r10: Optional[int] = None,
+        r11: Optional[int] = None,
+        r12: Optional[int] = None,
+        r13: Optional[int] = None,
+        r14: Optional[int] = None,
+        r15: Optional[int] = None,
+        fs_base: Optional[int] = None,
+        gs_base: Optional[int] = None,
+    ):
+        self.rip        = rip
+        self.rsp        = rsp
+        self.rflags     = rflags
+        self.rax        = rax
+        self.rbx        = rbx
+        self.rcx        = rcx
+        self.rdx        = rdx
+        self.rsi        = rsi
+        self.rdi        = rdi
+        self.rbp        = rbp
+        self.r8         = r8
+        self.r9         = r9
+        self.r10        = r10
+        self.r11        = r11
+        self.r12        = r12
+        self.r13        = r13
+        self.r14        = r14
+        self.r15        = r15
+        self.fs_base    = fs_base
+        self.gs_base    = gs_base
+
+    def count(self) -> int:
+        # FIXME: Optimize when most are none
+        return len(self.as_tuple())
+
+    def as_tuple(self) -> Tuple[int, ...]:
+        raw = (
+        self.rip        ,
+        self.rsp        ,
+        self.rflags     ,
+        self.rax        ,
+        self.rbx        ,
+        self.rcx        ,
+        self.rdx        ,
+        self.rsi        ,
+        self.rdi        ,
+        self.rbp        ,
+        self.r8         ,
+        self.r9         ,
+        self.r10        ,
+        self.r11        ,
+        self.r12        ,
+        self.r13        ,
+        self.r14        ,
+        self.r15        ,
+        self.fs_base    ,
+        self.gs_base    ,
+        )
+        return tuple(0 if x is None else x for x in raw)
+
+
 # Note that each label has a specified value as this is
 # what it is used to invoke the right system call to seL4.
 class Sel4Label(IntEnum):
@@ -593,6 +699,32 @@ class Sel4LabelRISCV(IntEnum):
     # RISC-V IRQ
     RISCVIRQIssueIRQHandlerTrigger = 43
 
+# @ivanv: Looks like x86 messes everything up since it has
+# other TCB invocations...
+class Sel4LabelX86(IntEnum):
+    X86PDPTMap
+    X86PDPTUnmap
+    X86PageDirectoryMap
+    X86PageDirectoryUnmap
+    X86PageTableMap
+    X86PageTableUnmap
+    X86IOPageTableMap
+    X86IOPageTableUnmap
+    X86PageMap
+    X86PageUnmap
+    X86PageMapIO
+    X86PageGetAddress
+    X86ASIDControlMakePool
+    X86ASIDPoolAssign
+    X86IOPortControlIssue
+    X86IOPortIn8
+    X86IOPortIn16
+    X86IOPortIn32
+    X86IOPortOut8
+    X86IOPortOut16
+    X86IOPortOut32
+    X86IRQIssueIRQHandlerIOAPIC
+    X86IRQIssueIRQHandlerMSI
 
 ### Invocations
 
@@ -773,6 +905,26 @@ class Sel4RISCVTcbWriteRegisters(Sel4Invocation):
 
 
 @dataclass
+class Sel4X86TcbWriteRegisters(Sel4Invocation):
+    _object_type = "TCB"
+    _method_name = "WriteRegisters"
+    _extra_caps = ()
+    label = Sel4Label.TCBWriteRegisters
+    tcb: int
+    resume: bool
+    arch_flags: int
+    regs: Sel4X86Regs
+
+    def _get_raw_invocation(self, kernel_config: KernelConfig) -> bytes:
+        params = (
+            self.arch_flags << 8 | 1 if self.resume else 0,
+            self.regs.count()
+        ) + self.regs.as_tuple()
+
+        return self._generic_invocation((), params)
+
+
+@dataclass
 class Sel4TcbBindNotification(Sel4Invocation):
     _object_type = "TCB"
     _method_name = "BindNotification"
@@ -795,6 +947,8 @@ class Sel4AsidPoolAssign(Sel4Invocation):
             self.label = Sel4LabelARM.ARMASIDPoolAssign
         elif arch == KernelArch.RISCV64:
             self.label = Sel4LabelRISCV.RISCVASIDPoolAssign
+        elif arch == KernelArch.X86_64:
+            self.label = Sel4LabelX86.X86ASIDPoolAssign
         else:
             raise Exception(f"Unexpected kernel architecture: {arch}")
 
@@ -862,19 +1016,6 @@ class Sel4ARMPageTableMap(Sel4Invocation):
 
 
 @dataclass
-class Sel4ARMPageMap(Sel4Invocation):
-    _object_type = "Page"
-    _method_name = "Map"
-    _extra_caps = ("vspace", )
-    label = Sel4LabelARM.ARMPageMap
-    page: int
-    vspace: int
-    vaddr: int
-    rights: int
-    attr: int
-
-
-@dataclass
 class Sel4RISCVPageTableMap(Sel4Invocation):
     _object_type = "Page Table"
     _method_name = "Map"
@@ -887,16 +1028,31 @@ class Sel4RISCVPageTableMap(Sel4Invocation):
 
 
 @dataclass
-class Sel4RISCVPageMap(Sel4Invocation):
+class Sel4PageMap(Sel4Invocation):
     _object_type = "Page"
     _method_name = "Map"
     _extra_caps = ("vspace", )
-    label = Sel4LabelRISCV.RISCVPageMap
     page: int
     vspace: int
     vaddr: int
     rights: int
     attr: int
+
+    def __init__(self, arch: KernelArch, page: int, vspace: int, vaddr: int, rights: int, attr: int):
+        if arch == KernelArch.AARCH64:
+            self.label = Sel4LabelARM.ARMPageMap
+        elif arch == KernelArch.RISCV64:
+            self.label = Sel4LabelRISCV.RISCVPageMap
+        elif arch == KernelArch.X86_64:
+            self.label = Sel4LabelX86.X86PageMap
+        else:
+            raise Exception(f"Unexpected kernel architecture: {arch}")
+
+        self.page = page
+        self.vspace = vspace
+        self.vaddr = vaddr
+        self.right = right
+        self.attr = attr
 
 
 @dataclass
@@ -1150,7 +1306,7 @@ def emulate_kernel_boot(
     schedcontrol_cap = fixed_cap_count + paging_cap_count
 
     # Determining seL4_MaxUntypedBits
-    if kernel_config.arch == KernelArch.AARCH64:
+    if kernel_config.arch == KernelArch.AARCH64 or kernel_config.arch == KernelArch.X86_64:
         max_bits = 47
     elif kernel_config.arch == KernelArch.RISCV64:
         max_bits = 38
@@ -1180,18 +1336,27 @@ def calculate_rootserver_size(kernel_config: KernelConfig, initial_task_region: 
     # But they are constant so it isn't too bad.
     slot_bits = 5  # seL4_SlotBits
     root_cnode_bits = kernel_config.root_cnode_bits # CONFIG_ROOT_CNODE_SIZE_BITS
+    # Determining seL4_TCBBits
     if kernel_config.arch == KernelArch.RISCV64:
         if kernel_config.have_fpu:
-            tcb_bits = 11 # seL4_TCBBits
+            tcb_bits = 11
         else:
-            tcb_bits = 10  # seL4_TCBBits
+            tcb_bits = 10
+    elif kernel_config.arch == KernelArch.X86_64:
+        # @ivanv: This is quite fragile... I should start thinking about how to get all these constants outside of the kernel and into here
+        if kernel_config.x86_xsave_size >= 832:
+            tcb_bits = 12
+        else:
+            tcb_bits = 11
+    elif kernel_config.arch == KernelArch.AARCH64:
+        tcb_bits = 11
     else:
-        tcb_bits = 11  # seL4_TCBBits
+        raise Exception(f"Unexpected kernel architecture: {arch}")
     page_bits = 12 # seL4_PageBits
     asid_pool_bits = 12  # seL4_ASIDPoolBits
     vspace_bits = 12 # seL4_VSpaceBits
     page_table_bits = 12  # seL4_PageTableBits
-    min_sched_context_bits = 8 # seL4_MinSchedContextBits
+    min_sched_context_bits = 7 # seL4_MinSchedContextBits
 
     size = 0
     size += 1 << (root_cnode_bits + slot_bits)
@@ -1205,7 +1370,7 @@ def calculate_rootserver_size(kernel_config: KernelConfig, initial_task_region: 
     return size
 
 
-def arch_get_page_attrs(arch: KernelArch, mp: SysMap) -> int:
+def arch_get_map_attrs(arch: KernelArch, mp: SysMap) -> int:
     attrs = 0
     if arch == KernelArch.AARCH64:
         attrs = SEL4_ARM_PARITY_ENABLED
@@ -1216,21 +1381,29 @@ def arch_get_page_attrs(arch: KernelArch, mp: SysMap) -> int:
     elif arch == KernelArch.RISCV64:
         if "x" not in mp.perms:
             attrs |= SEL4_RISCV_EXECUTE_NEVER
+    elif arch == KernelArch.X86_64:
+        # @ivanv: I *think* to make something not cacheable it's seL4_X86_CacheDisabled, but not sure.
+        if not mp.cached:
+            attrs |= SEL4_X86_CACHE_DISABLED
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
 
     return attrs
 
-# @ivanv: TODO, support Huge page size for AArch64/RISCV
+# @ivanv: TODO, support Huge page sizes for all architectures
 def arch_get_page_objects(arch: KernelArch) -> [int]:
-    if arch == KernelArch.AARCH64 or arch == KernelArch.RISCV64:
+    if arch == KernelArch.AARCH64 or
+            arch == KernelArch.RISCV64 or
+            arch == KernelArch.X86_64:
         return [Sel4Object.SmallPage, Sel4Object.LargePage]
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
 
 
 def arch_get_page_sizes(arch: KernelArch) -> [int]:
-    if arch == KernelArch.AARCH64 or arch == KernelArch.RISCV64:
+    if arch == KernelArch.AARCH64 or
+            arch == KernelArch.RISCV64 or
+            arch == KernelArch.X86_64:
         return [0x1000, 0x200_000]
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")

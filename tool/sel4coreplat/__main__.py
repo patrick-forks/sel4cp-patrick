@@ -57,9 +57,7 @@ from sel4coreplat.sel4 import (
     Sel4ARMPageUpperDirectoryMap,
     Sel4ARMPageDirectoryMap,
     Sel4ARMPageTableMap,
-    Sel4ARMPageMap,
     Sel4RISCVPageTableMap,
-    Sel4RISCVPageMap,
     Sel4TcbSetSchedParams,
     Sel4TcbSetSpace,
     Sel4TcbSetIpcBuffer,
@@ -73,9 +71,10 @@ from sel4coreplat.sel4 import (
     Sel4IrqControlGet,
     Sel4IrqHandlerSetNotification,
     Sel4SchedControlConfigureFlags,
+    Sel4PageMap,
     emulate_kernel_boot,
     emulate_kernel_boot_partial,
-    arch_get_page_attrs,
+    arch_get_map_attrs,
     arch_get_page_objects,
     arch_get_page_sizes,
     UntypedObject,
@@ -949,6 +948,9 @@ def build_system(
     elif kernel_config.arch == KernelArch.RISCV64:
         arch_page_table_map = Sel4RISCVPageTableMap
         arch_vm_attributes = SEL4_RISCV_DEFAULT_VMATTRIBUTES
+    elif kernel_config.arch == KernelArch.X86_64:
+        arch_page_table_map = Sel4X86PageTableMap
+        arch_vm_attributes = SEL4_X86_DEFAULT_VMATTRIBUTES
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
 
@@ -959,14 +961,19 @@ def build_system(
     # Finally, once the page tables are allocated the pages can be mapped
     vaddr = 0x8000_0000
     if kernel_config.arch == KernelArch.AARCH64:
-        arch_page_map = Sel4ARMPageMap
         arch_vm_attributes = SEL4_ARM_DEFAULT_VMATTRIBUTES | SEL4_ARM_EXECUTE_NEVER
     elif kernel_config.arch == KernelArch.RISCV64:
-        arch_page_map = Sel4RISCVPageMap
         arch_vm_attributes = SEL4_RISCV_DEFAULT_VMATTRIBUTES | SEL4_RISCV_EXECUTE_NEVER
+    elif kernel_config.arch == KernelArch.X86_64:
+        arch_vm_attributes = SEL4_X86_DEFAULT_VMATTRIBUTES
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
-    invocation = arch_page_map(system_cap_address_mask | base_page_cap, INIT_VSPACE_CAP_ADDRESS, vaddr, SEL4_RIGHTS_READ, arch_vm_attributes)
+    invocation = Sel4PageMap(kernel_config.arch,
+                             system_cap_address_mask | base_page_cap,
+                             INIT_VSPACE_CAP_ADDRESS,
+                             vaddr,
+                             SEL4_RIGHTS_READ,
+                             arch_vm_attributes)
     invocation.repeat(pages_required, page=1, vaddr=kernel_config.minimum_page_size)
     bootstrap_invocations.append(invocation)
 
@@ -1220,8 +1227,8 @@ def build_system(
         for mp in (pd.maps + pd_extra_maps[pd]):
             vaddr = mp.vaddr
             mr = all_mr_by_name[mp.mr] #system.mr_by_name[mp.mr]
-            # Get page attributes depending on architecture
-            attrs = arch_get_page_attrs(kernel_config.arch, mp)
+            # Get arch-specific page attributes for the mapping
+            attrs = arch_get_map_attrs(kernel_config.arch, mp)
             # Get page rights
             rights = 0
             if "r" in mp.perms:
