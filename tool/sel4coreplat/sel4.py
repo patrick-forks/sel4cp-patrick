@@ -1392,18 +1392,14 @@ def arch_get_map_attrs(arch: KernelArch, mp: SysMap) -> int:
 
 # @ivanv: TODO, support Huge page sizes for all architectures
 def arch_get_page_objects(arch: KernelArch) -> [int]:
-    if arch == KernelArch.AARCH64 or
-            arch == KernelArch.RISCV64 or
-            arch == KernelArch.X86_64:
+    if arch == KernelArch.AARCH64 or arch == KernelArch.RISCV64 or arch == KernelArch.X86_64:
         return [Sel4Object.SmallPage, Sel4Object.LargePage]
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
 
 
 def arch_get_page_sizes(arch: KernelArch) -> [int]:
-    if arch == KernelArch.AARCH64 or
-            arch == KernelArch.RISCV64 or
-            arch == KernelArch.X86_64:
+    if arch == KernelArch.AARCH64 or arch == KernelArch.RISCV64 or arch == KernelArch.X86_64:
         return [0x1000, 0x200_000]
     else:
         raise Exception(f"Unexpected kernel architecture: {arch}")
