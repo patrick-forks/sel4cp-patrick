@@ -83,7 +83,23 @@ SUPPORTED_BOARDS = (
             "KernelArmExportPCNTUser": True,
         },
         examples = {}
-    )
+    ),
+    BoardInfo(
+        name="rpi3b",
+        gcc_cpu="cortex-a53",
+        loader_link_address=0x10000000,
+        kernel_options = {
+            "KernelPlatform": "bcm2837",
+            "KernelARMPlatform": "rpi3",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+            # The kernel will default to AARCH32, which is why we specify AARCH64
+            "KernelSel4Arch": "aarch64",
+        },
+        examples = {
+            "hello": Path("example/rpi_3b/hello")
+        }
+    ),
 )
 
 SUPPORTED_CONFIGS = (
@@ -185,7 +201,7 @@ def build_sel4(
     cmd = (
         f"cmake -GNinja -DCMAKE_INSTALL_PREFIX={sel4_install_dir.absolute()} "\
         f" -DPYTHON3={executable} " \
-        f" -DKernelPlatform={platform} {config_str} " \
+        f" {config_str} " \
         f"-S {sel4_dir.absolute()} -B {sel4_build_dir.absolute()}")
 
     r = system(cmd)

@@ -26,10 +26,6 @@ _Static_assert(sizeof(uintptr_t) == 8 || sizeof(uintptr_t) == 4, "Expect uintptr
 
 #define STACK_SIZE 4096
 
-#define UART_BASE 0x5a070000
-#define STAT 0x14
-#define TRANSMIT 0x1c
-#define STAT_TDRE (1 << 23)
 #define UART_REG(x) ((volatile uint32_t *)(UART_BASE + (x)))
 
 #if defined(BOARD_zcu102)
@@ -113,6 +109,11 @@ memcpy(void *dst, const void *src, size_t sz)
 }
 
 #if defined(BOARD_tqma8xqp1gb)
+#define UART_BASE 0x5a070000
+#define STAT 0x14
+#define TRANSMIT 0x1c
+#define STAT_TDRE (1 << 23)
+
 static void
 putc(uint8_t ch)
 {
@@ -131,12 +132,23 @@ putc(uint8_t ch)
 #define UART_TX_FULL (1 << 21)
 
 #define REG(x) ((volatile uint32_t *)(0xc81004c0 + (x)))
-
 static void
 putc(uint8_t ch)
 {
     while ((*REG(UART_STATUS) & UART_TX_FULL));
     *REG(UART_WFIFO) = ch;
+}
+#elif defined(BOARD_rpi3b)
+#define UART_BASE 0x3f215040
+#define MU_IO 0x00
+#define MU_LSR 0x14
+#define MU_LSR_TXIDLE (1 << 6)
+
+static void
+putc(uint8_t ch)
+{
+    while (!(*UART_REG(MU_LSR) & MU_LSR_TXIDLE));
+    *UART_REG(MU_IO) = (ch & 0xff);
 }
 #else
 #error Board not defined
