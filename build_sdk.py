@@ -100,6 +100,20 @@ SUPPORTED_BOARDS = (
             "hello": Path("example/rpi_3b/hello")
         }
     ),
+    BoardInfo(
+        name="rpi4b",
+        gcc_cpu="cortex-a72",
+        loader_link_address=0x10000000,
+        kernel_options = {
+            "KernelPlatform": "bcm2711",
+            "KernelARMPlatform": "rpi4",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+            # The kernel will default to AARCH32, which is why we specify AARCH64
+            "KernelSel4Arch": "aarch64",
+        },
+        examples = {}
+    ),
 )
 
 SUPPORTED_CONFIGS = (
