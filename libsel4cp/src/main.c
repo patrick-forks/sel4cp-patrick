@@ -17,7 +17,7 @@
 
 #define NOTIFICATION_BITS 57
 
-char _stack[4096]  __attribute__((__aligned__(16)));
+char _stack[8192]  __attribute__((__aligned__(16)));
 
 char sel4cp_name[16];
 
